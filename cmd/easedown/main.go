@@ -67,8 +67,11 @@ func main() {
 
 	cmdutil.SetupPlainZerolog(optVerbose, false)
 
+	url := fmt.Sprintf("mongodb://%s:%s@%s:%s/main?authSource=admin", optMongoUser, optMongoPass, optMongoHost, optMongoPort)
+	log.Info().Str("mongo_url", url).Msg("connect mongodb")
+
 	var sess *mgo.Session
-	if sess, err = mgo.Dial(fmt.Sprintf("mongo://%s:%s@%s:%s", optMongoUser, optMongoPass, optMongoHost, optMongoPort)); err != nil {
+	if sess, err = mgo.Dial(url); err != nil {
 		return
 	}
 	defer sess.Clone()
