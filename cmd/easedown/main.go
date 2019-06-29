@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"flag"
+	"fmt"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/rs/zerolog/log"
@@ -20,14 +20,19 @@ const (
 )
 
 var (
-	optVerbose    bool
-	optHost       string
-	optDB         string
-	optCollection string
-	optDir        string
+	optVerbose   bool
+	optDryrun    = true
+	optMongoHost string
+	optMongoPort string
+	optMongoUser string
+	optMongoPass string
+	optWorkspace = "/workspace"
 )
 
 var (
+	coll *mgo.Collection
+	bulk = make([]interface{}, 0, batchSize)
+
 	separator = regexp.MustCompile("-{3,}|[|\\s,@:]")
 )
 
@@ -46,29 +51,32 @@ func tokenize(str string) []string {
 	return sanitize(separator.Split(str, -1))
 }
 
+func init() {
+	cmdutil.EnvBool(&optVerbose, "VERBOSE")
+	cmdutil.EnvBool(&optDryrun, "DRYRUN")
+	cmdutil.EnvStr(&optMongoHost, "MONGO_PORT_27017_TCP_ADDR")
+	cmdutil.EnvStr(&optMongoPort, "MONGO_PORT_27017_TCP_PORT")
+	cmdutil.EnvStr(&optMongoUser, "MONGO_ENV_MONGO_INITDB_ROOT_USERNAME")
+	cmdutil.EnvStr(&optMongoPass, "MONGO_ENV_MONGO_INITDB_ROOT_PASSWORD")
+	cmdutil.EnvStr(&optWorkspace, "WORKSPACE")
+}
+
 func main() {
 	var err error
 	defer cmdutil.Exit(&err)
 
-	flag.BoolVar(&optVerbose, "verbose", false, "verbose mode")
-	flag.StringVar(&optHost, "host", "localhost:27017", "mongodb host")
-	flag.StringVar(&optDB, "db", "main", "mongodb url")
-	flag.StringVar(&optCollection, "collection", "library", "mongodb collection")
-	flag.StringVar(&optDir, "dir", ".", "data directory")
-	flag.Parse()
-
-	cmdutil.SetupPlainZerolog(optVerbose, true)
+	cmdutil.SetupPlainZerolog(optVerbose, false)
 
 	var sess *mgo.Session
-	if sess, err = mgo.Dial(optHost); err != nil {
+	if sess, err = mgo.Dial(fmt.Sprintf("mongo://%s:%s@%s:%s", optMongoUser, optMongoPass, optMongoHost, optMongoPort)); err != nil {
 		return
 	}
+	defer sess.Clone()
 
-	var colle *mgo.Collection
-	colle = sess.DB(optDB).C(optCollection)
+	coll = sess.DB("main").C("selib")
 
 	var dir *os.File
-	if dir, err = os.Open(optDir); err != nil {
+	if dir, err = os.Open(optWorkspace); err != nil {
 		return
 	}
 
@@ -81,23 +89,24 @@ func main() {
 		if !strings.HasPrefix(name, "part-") {
 			continue
 		}
-		if err = handle(name, colle); err != nil {
+		if err = handle(name); err != nil {
 			return
 		}
-		break
+		if optDryrun {
+			break
+		}
 	}
 }
 
-func handle(name string, colle *mgo.Collection) (err error) {
+func handle(name string) (err error) {
 	log.Info().Str("name", name).Msg("file processing")
 	var file *os.File
-	if file, err = os.Open(filepath.Join(optDir, name)); err != nil {
+	if file, err = os.Open(filepath.Join(optWorkspace, name)); err != nil {
 		return
 	}
 	defer file.Close()
 	r := bufio.NewReader(file)
 	var line int
-	docs := make([]interface{}, 0, batchSize)
 	for {
 		line++
 
@@ -119,19 +128,37 @@ func handle(name string, colle *mgo.Collection) (err error) {
 		} else if len(tokens) == 1 {
 			log.Debug().Str("file", name).Int("line", line).Strs("tokens", tokens).Str("content", str).Msg("line 1 token")
 		}
-		docs = append(docs, bson.M{"tokens": tokens, "content": str, "source": "easedown"})
-		if len(docs) >= batchSize {
-			if err = colle.Insert(docs...); err != nil {
-				return
-			}
-			docs = docs[0:0]
-		}
-	}
-	if len(docs) > 0 {
-		if err = colle.Insert(docs...); err != nil {
+		if err = appendBulk(bson.M{"tokens": tokens, "content": str, "source": "easedown"}); err != nil {
 			return
 		}
+		if optDryrun && line > 10 {
+			break
+		}
 	}
-	log.Info().Str("file", name).Int("line", line).Msg("file processed")
+	if err = finishBulk(); err != nil {
+		return
+	}
+	log.Info().Str("file", name).Int("lines", line).Msg("file processed")
+	return
+}
+
+func appendBulk(doc bson.M) (err error) {
+	bulk = append(bulk, doc)
+	if len(bulk) >= batchSize {
+		if err = coll.Insert(bulk...); err != nil {
+			return
+		}
+		bulk = bulk[0:0]
+	}
+	return
+}
+
+func finishBulk() (err error) {
+	if len(bulk) > 0 {
+		if err = coll.Insert(bulk...); err != nil {
+			return
+		}
+		bulk = bulk[0:0]
+	}
 	return
 }
