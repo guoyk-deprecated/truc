@@ -2,11 +2,12 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/rs/zerolog/log"
-	"github.com/yankeguo/truc/cmdutil"
+	"github.com/yankeguo/truc/ext/extmgo"
+	"github.com/yankeguo/truc/ext/extos"
+	"github.com/yankeguo/truc/ext/extzerolog"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,10 +23,6 @@ const (
 var (
 	optVerbose   bool
 	optDryrun    = true
-	optMongoHost string
-	optMongoPort string
-	optMongoUser string
-	optMongoPass string
 	optWorkspace = "/workspace"
 )
 
@@ -52,26 +49,19 @@ func tokenize(str string) []string {
 }
 
 func init() {
-	cmdutil.EnvBool(&optVerbose, "VERBOSE")
-	cmdutil.EnvBool(&optDryrun, "DRYRUN")
-	cmdutil.EnvStr(&optMongoHost, "MONGO_PORT_27017_TCP_ADDR")
-	cmdutil.EnvStr(&optMongoPort, "MONGO_PORT_27017_TCP_PORT")
-	cmdutil.EnvStr(&optMongoUser, "MONGO_ENV_MONGO_INITDB_ROOT_USERNAME")
-	cmdutil.EnvStr(&optMongoPass, "MONGO_ENV_MONGO_INITDB_ROOT_PASSWORD")
-	cmdutil.EnvStr(&optWorkspace, "WORKSPACE")
+	extos.EnvBool(&optVerbose, "VERBOSE")
+	extos.EnvBool(&optDryrun, "DRYRUN")
+	extos.EnvStr(&optWorkspace, "WORKSPACE")
 }
 
 func main() {
 	var err error
-	defer cmdutil.Exit(&err)
+	defer extos.Exit(&err)
 
-	cmdutil.SetupPlainZerolog(optVerbose, false)
-
-	url := fmt.Sprintf("mongodb://%s:%s@%s:%s/main?authSource=admin", optMongoUser, optMongoPass, optMongoHost, optMongoPort)
-	log.Info().Str("mongo_url", url).Msg("connect mongodb")
+	extzerolog.SetupPlainZerolog(optVerbose, false)
 
 	var sess *mgo.Session
-	if sess, err = mgo.Dial(url); err != nil {
+	if sess, err = extmgo.DialLinkedMongo(); err != nil {
 		return
 	}
 	defer sess.Clone()

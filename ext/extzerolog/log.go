@@ -1,4 +1,4 @@
-package cmdutil
+package extzerolog
 
 import (
 	"github.com/rs/zerolog"
