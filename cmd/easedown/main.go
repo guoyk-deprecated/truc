@@ -122,7 +122,7 @@ func handle(name string) (err error) {
 			return
 		}
 		str = strings.TrimSpace(str)
-		if len(str) == 0 {
+		if len(str) == 0 || len(str) >= 1024 {
 			continue
 		}
 		tokens := tokenize(str)
