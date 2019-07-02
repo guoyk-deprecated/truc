@@ -46,7 +46,8 @@ func main() {
 	var oldname string
 
 	if err = extos.ReaddirLines(optWorkspace, extos.ReaddirLinesOptions{
-		Handle: func(line string, name string, lineno int) (err error) {
+		Handle: func(line0 []byte, name string, lineno int) (err error) {
+			line := string(line0)
 			if oldname != name {
 				log.Info().Str("file", name).Msg("file entered")
 				oldname = name
