@@ -15,6 +15,6 @@
 .idea/
 
 # cmd
-/cmd/easedown/easedown
-/cmd/jsons2mongo/jsons2mongo
+/cmd/dict2mongo/dict2mongo
+/cmd/json2mongo/json2mongo
 /cmd/deployer/deployer

@@ -8,10 +8,6 @@ import (
 	"github.com/yankeguo/truc/ext/extmgo"
 	"github.com/yankeguo/truc/ext/extos"
 	"github.com/yankeguo/truc/ext/extzerolog"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -53,47 +49,37 @@ func main() {
 	defer sess.Clone()
 
 	coll = sess.DB("main").C("corpus")
+	bulk := extmgo.NewBulk(coll, 1024)
 
-	var dir *os.File
-	if dir, err = os.Open(optWorkspace); err != nil {
-		return
-	}
-
-	var names []string
-	if names, err = dir.Readdirnames(-1); err != nil {
-		return
-	}
-	sort.Sort(sort.StringSlice(names))
-	for _, name := range names {
-		if !strings.HasSuffix(name, ".json") {
-			continue
-		}
-		if err = handle(name); err != nil {
+	if err = extos.ReaddirFiles(optWorkspace, extos.ReaddirFilesOptions{
+		BeforeFile: func(name string) bool {
+			return strings.HasSuffix(name, ".json")
+		},
+		Handle: func(buf []byte, name string) (err error) {
+			log.Info().Str("file", name).Msg("file entered")
+			var a Article
+			if err = json.Unmarshal(buf, &a); err != nil {
+				return
+			}
+			if err = bulk.Append(bson.M{
+				"lang":        a.Lang,
+				"title":       a.Title,
+				"content":     a.Content,
+				"vendor":      a.Vendor,
+				"url":         a.URL,
+				"original_id": a.OriginalID,
+				"date":        a.Date,
+			}); err != nil {
+				return
+			}
 			return
-		}
-	}
-}
-
-func handle(name string) (err error) {
-	log.Info().Str("name", name).Msg("file processing")
-	var buf []byte
-	if buf, err = ioutil.ReadFile(filepath.Join(optWorkspace, name)); err != nil {
-		return
-	}
-	var a Article
-	if err = json.Unmarshal(buf, &a); err != nil {
-		return
-	}
-	if err = coll.Insert(bson.M{
-		"lang":        a.Lang,
-		"title":       a.Title,
-		"content":     a.Content,
-		"vendor":      a.Vendor,
-		"url":         a.URL,
-		"original_id": a.OriginalID,
-		"date":        a.Date,
+		},
 	}); err != nil {
 		return
 	}
-	return
+
+	if err = bulk.Finish(); err != nil {
+		return
+	}
+
 }
