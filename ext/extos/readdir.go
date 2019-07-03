@@ -2,7 +2,7 @@ package extos
 
 import (
 	"bytes"
-	"github.com/yankeguo/truc/ext/extio"
+	"go.guoyk.net/ext/extio"
 	"io/ioutil"
 	"os"
 	"path/filepath"

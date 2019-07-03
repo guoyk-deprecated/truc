@@ -3,7 +3,7 @@ package extmgo
 import (
 	"fmt"
 	"github.com/globalsign/mgo"
-	"github.com/yankeguo/truc/ext/extos"
+	"go.guoyk.net/ext/extos"
 	"strings"
 )
 

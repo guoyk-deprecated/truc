@@ -5,9 +5,9 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/rs/zerolog/log"
-	"github.com/yankeguo/truc/ext/extmgo"
-	"github.com/yankeguo/truc/ext/extos"
-	"github.com/yankeguo/truc/ext/extzerolog"
+	"go.guoyk.net/ext/extmgo"
+	"go.guoyk.net/ext/extos"
+	"go.guoyk.net/ext/extzerolog"
 	"strings"
 	"time"
 )
