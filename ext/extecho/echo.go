@@ -13,8 +13,8 @@ func NewEcho(limit int64, rs ...HealthResource) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
-	e.Static("/", webroot)
 	e.Use(middleware.Recover())
+	e.Static("/", webroot)
 	e.Use(NewColimit(limit))
 	e.Use(NewHealth(rs...))
 	e.Use(middleware.Logger())
