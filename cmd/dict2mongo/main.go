@@ -16,6 +16,9 @@ var (
 	optWorkspace = "/workspace"
 	optSource    string
 
+	optMongoDatabase   = "main"
+	optMongoCollection string
+
 	separator = regexp.MustCompile("-{3,}|[|\\s,@:]")
 )
 
@@ -27,6 +30,8 @@ func init() {
 	extos.EnvBool(&optVerbose, "VERBOSE")
 	extos.EnvStr(&optWorkspace, "WORKSPACE")
 	extos.EnvStr(&optSource, "SOURCE")
+	extos.EnvStr(&optMongoDatabase, "MONGO_DATABASE", "DATABASE")
+	extos.EnvStr(&optMongoCollection, "MONGO_COLLECTION", "COLLECTION")
 }
 
 func main() {
@@ -41,8 +46,9 @@ func main() {
 	}
 	defer sess.Clone()
 
-	coll := sess.DB("main").C("selib")
+	coll := sess.DB(optMongoDatabase).C(optMongoCollection)
 	bulk := extmgo.NewBulk(coll, 1024)
+
 	var oldname string
 
 	if err = extos.ReaddirLines(optWorkspace, extos.ReaddirLinesOptions{

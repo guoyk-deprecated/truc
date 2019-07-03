@@ -25,6 +25,9 @@ type Article struct {
 var (
 	optVerbose   bool
 	optWorkspace = "/workspace"
+
+	optMongoDatabase   = "main"
+	optMongoCollection string
 )
 
 var (
@@ -34,6 +37,8 @@ var (
 func init() {
 	extos.EnvBool(&optVerbose, "VERBOSE")
 	extos.EnvStr(&optWorkspace, "WORKSPACE")
+	extos.EnvStr(&optMongoDatabase, "MONGO_DATABASE", "DATABASE")
+	extos.EnvStr(&optMongoCollection, "MONGO_COLLECTION", "COLLECTION")
 }
 
 func main() {
@@ -48,7 +53,7 @@ func main() {
 	}
 	defer sess.Clone()
 
-	coll = sess.DB("main").C("corpus")
+	coll = sess.DB(optMongoDatabase).C(optMongoCollection)
 	bulk := extmgo.NewBulk(coll, 1024)
 
 	if err = extos.ReaddirFiles(optWorkspace, extos.ReaddirFilesOptions{
