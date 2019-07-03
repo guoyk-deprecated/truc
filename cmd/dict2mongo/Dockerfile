@@ -1,5 +1,5 @@
 FROM alpine:3.10
 
-ADD easedown /
+ADD dict2mongo /
 
-CMD ["/easedown"]
+CMD ["/dict2mongo"]
